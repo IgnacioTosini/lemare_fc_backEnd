@@ -98,6 +98,24 @@ export const updatePlayerById = async (req: Request, res: Response) => {
     try {
         const { stats, socialMedia, ...playerData } = req.body;
 
+        // Si se está actualizando la imagen, eliminar la imagen anterior de Cloudinary
+        if (playerData.image && player.image) {
+            const currentImage = player.image; // Esto es un objeto CloudinaryImage
+            const newImage = playerData.image; // Esto también es un objeto CloudinaryImage
+
+            // Si son diferentes imágenes (comparar por public_id), eliminar la anterior
+            if (currentImage.public_id !== newImage.public_id) {
+                try {
+                    const { v2: cloudinary } = await import('cloudinary');
+                    await cloudinary.uploader.destroy(currentImage.public_id);
+                    console.log(`Imagen anterior eliminada de Cloudinary: ${currentImage.public_id}`);
+                } catch (cloudinaryError) {
+                    console.error('Error eliminando imagen anterior de Cloudinary:', cloudinaryError);
+                    // No bloquear la actualización del jugador si falla la eliminación de la imagen
+                }
+            }
+        }
+
         // Actualizar el jugador
         await player.update(playerData);
 
@@ -164,6 +182,18 @@ export const deletePlayer = async (req: Request, res: Response) => {
         if (!player) {
             res.status(404).json({ error: `Player with ID ${id} not found` });
             return;
+        }
+
+        // Si el jugador tiene imagen, eliminarla de Cloudinary
+        if (player.image && player.image.public_id) {
+            try {
+                const { v2: cloudinary } = await import('cloudinary');
+                await cloudinary.uploader.destroy(player.image.public_id);
+                console.log(`Imagen del jugador eliminada de Cloudinary: ${player.image.public_id}`);
+            } catch (cloudinaryError) {
+                console.error('Error eliminando imagen de Cloudinary:', cloudinaryError);
+                // No bloquear la eliminación del jugador si falla la eliminación de la imagen
+            }
         }
 
         // Eliminar estadísticas asociadas

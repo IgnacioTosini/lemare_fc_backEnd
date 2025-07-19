@@ -22,10 +22,31 @@ class Player extends Model {
     declare name: string;
 
     @Column({
-        type: DataType.STRING,
-        allowNull: true
+        type: DataType.TEXT,
+        allowNull: true,
+        get() {
+            const value = this.getDataValue('image');
+            if (!value) return null;
+
+            try {
+                // Si es un objeto JSON, parsearlo
+                return typeof value === 'string' ? JSON.parse(value) : value;
+            } catch {
+                // Si no es JSON válido, asumir que es una URL string (compatibilidad)
+                return { url: value, public_id: '' };
+            }
+        },
+        set(value: any) {
+            if (typeof value === 'object' && value !== null) {
+                // Si es un objeto, convertirlo a JSON string
+                this.setDataValue('image', JSON.stringify(value));
+            } else {
+                // Si es string, crear objeto CloudinaryImage
+                this.setDataValue('image', JSON.stringify({ url: value, public_id: '' }));
+            }
+        }
     })
-    declare image: string;
+    declare image: { url: string; public_id: string } | null;
 
     @Column({
         type: DataType.INTEGER,
